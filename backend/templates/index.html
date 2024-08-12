@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChromaDB Query Interface</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        #results { margin-top: 20px; }
+        .result { border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; }
+        img { max-width: 100%; height: auto; }
+        #error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>ChromaDB Query Interface</h1>
+    <input type="text" id="queryInput" placeholder="Enter your query">
+    <button id="searchButton">Search</button>
+    <div id="error"></div>
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('searchButton').addEventListener('click', performQuery);
+
+        async function performQuery() {
+            console.log('performQuery function called');
+            const query = document.getElementById('queryInput').value;
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = ''; // Clear any previous errors
+
+            try {
+                console.log('Sending query:', query);
+                const response = await fetch('/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query: query }),
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Received data:', data);
+                displayResults(data);
+            } catch (error) {
+                console.error('Error:', error);
+                errorDiv.textContent = `An error occurred: ${error.message}`;
+            }
+        }
+
+        function displayResults(results) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            if (results.length === 0) {
+                resultsDiv.textContent = 'No results found.';
+                return;
+            }
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'result';
+                resultDiv.innerHTML = `
+                    <p>${result.text}</p>
+                    <img src="${result.image}" alt="PDF Page">
+                    <p>Source: ${result.metadata.source}, Page: ${result.metadata.page}</p>
+                `;
+                resultsDiv.appendChild(resultDiv);
+            });
+        }
+    </script>
+</body>
+</html>
