@@ -1,3 +1,6 @@
 chroma_data
 databases/chromadb
 databases/pdf_data
+node_modules
+dist
+.DS_Store

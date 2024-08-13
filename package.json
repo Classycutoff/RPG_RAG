@@ -1,0 +1,15 @@
+{
+  "name": "rag-pdf-interface",
+  "version": "1.0.0",
+  "main": "main.js",
+  "description": "This is my app for looking through and querying pdf files",
+  "author": "Eliel Taskinen",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^31.3.1",
+    "electron-builder": "^24.13.3"
+  }
+}
