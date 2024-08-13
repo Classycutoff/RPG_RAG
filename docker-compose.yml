@@ -9,7 +9,6 @@ services:
     image: chromadb/chroma:latest
     volumes:
       - ./databases/chromadb:/chroma/chroma
-      - ./databases/pdf_data:/pdf_data
     environment:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma # this is the default path, change it as needed
@@ -38,6 +37,8 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "5001:5001"
+    volumes:
+      - ./databases/pdf_data:/pdf_data
     depends_on:
       - chromadb
     networks:

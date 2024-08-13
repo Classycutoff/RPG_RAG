@@ -1,1 +1,1 @@
-This file is here to keep the databases directory.
+This file is here to keep the databases directory since this is the dir wher permanent files are stored.

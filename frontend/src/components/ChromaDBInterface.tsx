@@ -10,6 +10,7 @@ export default function ChromaDBInterface() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Result[]>([]);
   const [file, setFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null); // New state for file name
   const [textVisibility, setTextVisibility] = useState<Record<number, boolean>>({});
 
@@ -28,7 +29,7 @@ export default function ChromaDBInterface() {
     const data = await response.json();
     console.log(data['message']);
     console.log(data)
-    setResults(data['data']);
+    setResults(data['filtered_results']);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,18 +42,25 @@ export default function ChromaDBInterface() {
   const handleAddFile = async () => {
     if (!file) return;
 
+    setIsLoading(true);
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch('/api/add-file', {
-      method: 'POST',
-      body: formData,
-    });
+    try {
+      const response = await fetch('/api/add-file', {
+          method: 'POST',
+          body: formData,
+      });
 
-    const data = await response.json();
-    console.log(data);
-    setFile(null);
-    setFileName(null);
+      const data = await response.json();
+      console.log(data);
+      setFile(null);
+      setFileName(null);
+    } catch (error) {
+        console.error('Error uploading file:', error);
+    } finally {
+        setIsLoading(false); // Set loading to false when the process is done
+    }
   };
 
   const toggleTextVisibility = (index: number) => {
@@ -64,7 +72,7 @@ export default function ChromaDBInterface() {
 
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">ChromaDB Interface</h1>
+      <h1 className="text-2xl font-bold mb-4">PDF Rag Interface</h1>
       
       <div className="mb-4">
         <input
@@ -83,11 +91,41 @@ export default function ChromaDBInterface() {
       </div>
 
       <div className="mb-4">
-        <input type="file" onChange={handleFileUpload} className="mr-2" />
-        <button onClick={handleAddFile} className="bg-green-500 text-white p-2 rounded">
-          Add File
-        </button>
-      </div>
+    <input type="file" onChange={handleFileUpload} className="mr-2" />
+    <button 
+        onClick={handleAddFile} 
+        className="bg-green-500 text-white p-2 rounded"
+        disabled={isLoading} // Optionally disable the button during loading
+    >
+        Add File
+    </button>
+    {isLoading && (
+        <div className="ml-2 inline-block">
+            {/* Simple spinner, you can replace this with any spinner component or custom styling */}
+            <svg 
+                className="animate-spin h-5 w-5 text-gray-500" 
+                xmlns="http://www.w3.org/2000/svg" 
+                fill="none" 
+                viewBox="0 0 24 24"
+            >
+                <circle 
+                    className="opacity-25" 
+                    cx="12" 
+                    cy="12" 
+                    r="10" 
+                    stroke="currentColor" 
+                    strokeWidth="4"
+                ></circle>
+                <path 
+                    className="opacity-75" 
+                    fill="currentColor" 
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                ></path>
+            </svg>
+            <p>Adding files might take a while...</p>
+        </div>
+    )}
+</div>
 
       <div>
         <h2 className="text-xl font-semibold mb-2">Results:</h2>

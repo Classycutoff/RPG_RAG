@@ -4,9 +4,9 @@
 import { NextResponse } from 'next/server';
 import { Result } from '../../../types';
 
-// function isEmptyArray(value: any): value is Array<any> {
-//   return Array.isArray(value) && value.length === 0;
-// }
+function isEmptyArray(value: any): value is Array<any> {
+  return Array.isArray(value) && value.length === 0;
+}
 
 function removeDuplicates(results: Result[]) {
   const seen = new Set<string>();
@@ -39,17 +39,17 @@ export async function POST(request: Request) {
 
     let data = await response.json();
     let filtered_results = removeDuplicates(data);
-    // if (isEmptyArray(data)) {
-    //   data = [{
-    //     text: 'Empty array. Please add some pdf\'s',
-    //     metada: {
-    //       source: 'null',
-    //       page: 'null'
-    //     },
-    //     image: 'null',
-    //     distance: 0
-    //   }];
-    // }
+    if (isEmptyArray(filtered_results)) {
+      filtered_results = [{
+        text: 'Empty array. Please add some pdf\'s',
+        metadata: {
+          source: 'null',
+          page: 0
+        },
+        image: 'null',
+        distance: 0
+      }];
+    }
     // console.log('POST DATA', data)
     return NextResponse.json({message: "Data received succesfully", filtered_results})
   } catch (error) {
