@@ -16,11 +16,14 @@ from utils.pdf_funcs import add_pdf_from_dir, get_pdf_page_image, chunk_and_add_
 from utils.print_results import print_results
 
 app = Flask(__name__)
-CORS(app)
-logging.basicConfig(level=logging.DEBUG)
+CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
-chroma_client = chromadb.PersistentClient(path=_global.chroma_path)
-collection = chroma_client.get_collection(_global.doc_collection_name)
+chroma_client = chromadb.HttpClient(
+    host="chromadb",
+    port=8000
+)
+
+collection = chroma_client.get_or_create_collection(_global.doc_collection_name)
 
 # Who is Nhimbaloth?
 
@@ -58,7 +61,7 @@ def query():
                 'distance': distance
             })
         
-        processed_results.sort(reverse=True, key=sort_processed_results)
+        processed_results.sort(key=sort_processed_results)
     
         app.logger.info(f'Returning {len(processed_results)} results')
         return jsonify(processed_results)
@@ -89,6 +92,11 @@ def add_files():
     return jsonify({'message': 'File uploaded successfully', 'file_path': file_path}), 200
 
 
+@app.route("/api/health")
+def health_check():
+    return jsonify({"status": "healthy"}), 200
+
+
 # def main():
 #     load_dotenv()
 
@@ -110,7 +118,7 @@ def add_files():
 
 if __name__ == '__main__':
     start = time.time()
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5001)
     # main()
     print(f'Function took {round(time.time() - start, 2)}')
 

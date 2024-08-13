@@ -1,0 +1,49 @@
+version: '3.8'
+
+networks:
+  net:
+    driver: bridge
+
+services:
+  chromadb:
+    image: chromadb/chroma:latest
+    volumes:
+      - ./databases/chromadb:/chroma/chroma
+      - ./databases/pdf_data:/pdf_data
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma # this is the default path, change it as needed
+      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY:-TRUE}
+    ports:
+      - 8000:8000
+    networks:
+      - net
+    expose:
+      - 8000
+
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - net
+  
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile.backend
+    ports:
+      - "5001:5001"
+    depends_on:
+      - chromadb
+    networks:
+      - net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

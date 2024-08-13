@@ -13,7 +13,7 @@ export async function POST(request: Request) {
 
   try {
     // Forward the file to the Python backend
-    const backendResponse = await fetch('http://127.0.0.1:5000/api/add-file', {
+    const backendResponse = await fetch('http://backend:5001/api/add-file', {
       method: 'POST',
       body: backendFormData,
     });

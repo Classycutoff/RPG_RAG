@@ -3,15 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 
-type Result = {
-  text: string;
-  metadata: {
-    source: string;
-    page: number;
-  };
-  image: string;
-  distance: number;
-};
+import { Result } from '../types';
 
 
 export default function ChromaDBInterface() {
@@ -22,13 +14,21 @@ export default function ChromaDBInterface() {
   const [textVisibility, setTextVisibility] = useState<Record<number, boolean>>({});
 
   const handleSearch = async () => {
-    const response = await fetch('http://127.0.0.1:5000/api/query', {
+    const response = await fetch('/api/query', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query }),
     });
+
+    if (!response.ok) {
+      console.error('Error fetching data from the proxy API:', response.statusText);
+      return;
+    }
+    
     const data = await response.json();
-    setResults(data);
+    console.log(data['message']);
+    console.log(data)
+    setResults(data['data']);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
