@@ -24,12 +24,11 @@ import utils._global as _global
 from utils.pdf_funcs import add_pdf_from_dir, get_pdf_page_image, chunk_and_add_pdf_to_chroma
 from utils.print_results import print_results
 from utils.multiprocessing_funcs import (
-    produce_pdf_chunks_to_queue, 
-    consume_chunks_to_chromadb,
     produce_pdf_chunks,
     consume_pdf_chunks,
     get_chunks_and_consume
 )
+from utils.collection_funcs import check_collection
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
@@ -61,20 +60,8 @@ def query():
     
     app.logger.info('Query endpoint called.')
     try:
-        chroma_client = chromadb.HttpClient(
-        host=_global.chroma_host,
-        port=_global.chroma_port
-        )   
-
-        sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=_global.embedding_model_name, 
-            device=_global.device
-            )
-        collection = chroma_client.get_or_create_collection(
-            name=_global.doc_collection_name,
-            embedding_function=sentence_transformer_ef
-        )
-
+        ## TODO!
+        collection = check_collection()
         query_text = request.json['query']
         results = collection.query(
             query_texts=[query_text],
@@ -128,19 +115,7 @@ def add_files():
 
     print('Starting multiprocessing...')
 
-    chroma_client = chromadb.HttpClient(
-        host=_global.chroma_host,
-        port=_global.chroma_port
-    )
-
-    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name=_global.embedding_model_name, 
-        device=_global.device
-        )
-    collection = chroma_client.get_or_create_collection(
-        name=_global.doc_collection_name,
-        embedding_function=sentence_transformer_ef
-    )
+    test_collection = check_collection()
 
     results = asyncio.run(get_chunks_and_consume(file_path))
     print('Execution Done.')
