@@ -1,29 +1,51 @@
 import time
 import os
+import asyncio
 
 from dotenv import load_dotenv
 import chromadb
 from flask import Flask, request, jsonify, send_file, render_template
 from flask_cors import CORS
+import multiprocessing as mp
 import fitz
 import tempfile
 import base64
 import io
 import logging
+from concurrent.futures import ProcessPoolExecutor
+import concurrent.futures
+
+from langchain_community.embeddings.sentence_transformer import (
+    SentenceTransformerEmbeddings,
+)
+from chromadb.utils import embedding_functions
 
 import utils._global as _global
 from utils.pdf_funcs import add_pdf_from_dir, get_pdf_page_image, chunk_and_add_pdf_to_chroma
 from utils.print_results import print_results
+from utils.multiprocessing_funcs import (
+    produce_pdf_chunks_to_queue, 
+    consume_chunks_to_chromadb,
+    produce_pdf_chunks,
+    consume_pdf_chunks,
+    get_chunks_and_consume
+)
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
-chroma_client = chromadb.HttpClient(
-    host="chromadb",
-    port=8000
-)
+# chroma_client = chromadb.HttpClient(
+#     host="chromadb",
+#     port=8000
+# )
 
-collection = chroma_client.get_or_create_collection(_global.doc_collection_name)
+# device = 'cpu'
+# # embedding_function = SentenceTransformerEmbeddings(model_name=_global.embedding_model_name)
+# sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=_global.embedding_model_name, device=device)
+# collection = chroma_client.get_or_create_collection(
+#     _global.doc_collection_name, 
+#     embedding_function=sentence_transformer_ef
+# )
 
 # Who is Nhimbaloth?
 
@@ -39,6 +61,20 @@ def query():
     
     app.logger.info('Query endpoint called.')
     try:
+        chroma_client = chromadb.HttpClient(
+        host=_global.chroma_host,
+        port=_global.chroma_port
+        )   
+
+        sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=_global.embedding_model_name, 
+            device=_global.device
+            )
+        collection = chroma_client.get_or_create_collection(
+            name=_global.doc_collection_name,
+            embedding_function=sentence_transformer_ef
+        )
+
         query_text = request.json['query']
         results = collection.query(
             query_texts=[query_text],
@@ -74,46 +110,73 @@ def query():
 @app.route('/api/add-file', methods=['POST'])
 def add_files():
     app.logger.info(request.files['file'])
+
     if 'file' not in request.files:
         return jsonify({'error': 'No file part in the request'}), 400
 
     file = request.files['file']
-
     if file.filename == '':
         return jsonify({'error': 'No selected file'}), 400
-
-    elif file:
-        file_path = os.path.join(_global.pdf_data_path, file.filename)
-        if os.path.isfile(file_path):
-            return jsonify({'message': 'File already exists.', 'file_path': file_path}), 404
-        file.save(file_path)
+    elif not file:
+        return jsonify({'message': 'The object uploaded wasn\'t a file, try again'}), 404
     
-    chunk_and_add_pdf_to_chroma(chroma_client, file_path)
+
+    file_path = os.path.join(_global.pdf_data_path, file.filename)
+    if os.path.isfile(file_path):
+        return jsonify({'message': 'File already exists.', 'file_path': file_path}), 404
+    file.save(file_path)
+
+    print('Starting multiprocessing...')
+
+    chroma_client = chromadb.HttpClient(
+        host=_global.chroma_host,
+        port=_global.chroma_port
+    )
+
+    sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+        model_name=_global.embedding_model_name, 
+        device=_global.device
+        )
+    collection = chroma_client.get_or_create_collection(
+        name=_global.doc_collection_name,
+        embedding_function=sentence_transformer_ef
+    )
+
+    results = asyncio.run(get_chunks_and_consume(file_path))
+    print('Execution Done.')
+
+    # mp_pool = mp.Pool(processes=4)
+
+    # pool_with_func = mp_pool.async_map(consume_pdf_chunks, chunked_documents)
+    # pool_with_func.start()
+    # pool_with_func.join()
+
+    # produce_and_consume_queue = mp.Queue()
+    # produce_chunks_process = mp.Process(target=produce_pdf_chunks_to_queue, args=(produce_and_consume_queue, file_path))
+    # consume_chunks_process = mp.Process(target=consume_chunks_to_chromadb, args=(produce_and_consume_queue, True))
+
+    # start_time = time.time()
+
+    # # Start processes
+    # produce_chunks_process.start()
+    # consume_chunks_process.start()
+
+    # # Wait for producer to finish producing
+    # produce_chunks_process.join()
+
+    # # Signal consumer to stop consuming by putting None into the queue. Need 2 None's to stop 2 consumers.    
+    # produce_and_consume_queue.put(None)
+
+    # # Wait for consumer to finish consuming
+    # consume_chunks_process.join()
+    # print(f"Elapsed seconds: {time.time()-start_time:.0f} Record count: {_global.collection.count()}")
+
     return jsonify({'message': 'File uploaded successfully', 'file_path': file_path}), 200
 
 
 @app.route("/api/health")
 def health_check():
     return jsonify({"status": "healthy"}), 200
-
-
-# def main():
-#     load_dotenv()
-
-#     # chroma_client = chromadb.HttpClient(host='localhost', port=8000)
-#     chroma_client = chromadb.PersistentClient(path='chroma_data')
-#     dir_path = _global.pdf_data_path
-#     add_pdf_from_dir(chroma_client, dir_path) 
-
-#     query_str = "Who is Nhimbaloth?"
-
-#     collection = chroma_client.get_collection(_global.doc_collection_name)
-#     results = collection.query(
-#         query_texts=[query_str],
-#         n_results=5
-#     )
-#     print_results(results)
-
 
 
 if __name__ == '__main__':

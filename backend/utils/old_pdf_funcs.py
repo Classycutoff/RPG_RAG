@@ -1,6 +1,5 @@
 import os
 import base64
-import multiprocessing as mp
 
 import chromadb
 import fitz
@@ -34,6 +33,7 @@ def chunk_and_add_pdf_to_chroma(chroma_client: chromadb.HttpClient, file_path: s
         collection_name=_global.doc_collection_name,
         client=chroma_client
     )
+
 
 
 def add_pdf_from_dir(chroma_client: chromadb.HttpClient, dir_path: str):

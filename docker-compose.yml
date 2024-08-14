@@ -39,6 +39,7 @@ services:
       - "5001:5001"
     volumes:
       - ./databases/pdf_data:/pdf_data
+      - ./backend/models:/root/.cache/chroma/onnx_models/
     depends_on:
       - chromadb
     networks:
