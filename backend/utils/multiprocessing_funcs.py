@@ -73,6 +73,49 @@ from utils.collection_funcs import add_to_collection
 #         )
 
 
+def produce_pdf_chunks(file_path: str):
+    pdf_loader = PyPDFLoader(file_path)
+    document = pdf_loader.load()
+    # print(document)
+
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=_global.CHUNK_SIZE,
+        chunk_overlap=100
+    )
+
+    chunked_documents = []
+
+    documents = []
+    metadatas = []
+    ids = []
+
+    for page in document:
+        word_count = len(page.page_content.split())
+        # print(f'Word count: {word_count}')
+        if word_count <= _global.MIN_WORDS_PER_PAGE:
+            continue
+
+
+        chunked_page = text_splitter.split_text(page.page_content)
+
+        for i, chunk in enumerate(chunked_page):
+            documents.append(chunk)
+            metadatas.append(page.metadata)
+            ids.append(f"{page.metadata['source']}-{page.metadata['page']}-{i}")
+
+        if len(ids) >= _global.BATCH_SIZE:
+            chunked_documents.append((documents, metadatas, ids))
+            documents = []
+            metadatas = []
+            ids = []
+
+
+    if len(ids) > 0:
+        chunked_documents.append((documents, metadatas, ids))
+
+    return chunked_documents
+
+
 # def produce_pdf_chunks(file_path: str):
 #     pdf_loader = PyPDFLoader(file_path)
 #     document = pdf_loader.load()
@@ -89,7 +132,10 @@ from utils.collection_funcs import add_to_collection
 #     metadatas = []
 #     ids = []
 
+#     print(document)
+
 #     for page in document:
+#         print(type(page))
 #         word_count = len(page.page_content.split())
 #         # print(f'Word count: {word_count}')
 #         if word_count <= _global.MIN_WORDS_PER_PAGE:
@@ -99,15 +145,16 @@ from utils.collection_funcs import add_to_collection
 #         chunked_page = text_splitter.split_text(page.page_content)
 
 #         for i, chunk in enumerate(chunked_page):
-#             documents.append(chunk)
-#             metadatas.append(page.metadata)
+#             document.append(chunk)
 #             ids.append(f"{page.metadata['source']}-{page.metadata['page']}-{i}")
+#             metadatas.append(page.metadata)
 
-#         if len(ids) >= _global.BATCH_SIZE:
-#             chunked_documents.append((documents, metadatas, ids))
-#             documents = []
-#             metadatas = []
-#             ids = []
+
+#             if len(ids) >= _global.BATCH_SIZE:
+#                 chunked_documents.append((documents, metadatas, ids))
+#                 documents = []
+#                 metadatas = []
+#                 ids = []
 
 
 #     if len(ids) > 0:
@@ -116,42 +163,9 @@ from utils.collection_funcs import add_to_collection
 #     return chunked_documents
 
 
-def produce_pdf_chunks(file_path: str):
-    pdf_loader = PyPDFLoader(file_path)
-    document = pdf_loader.load()
-    # print(document)
 
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=_global.CHUNK_SIZE,
-        chunk_overlap=100
-    )
-    embedding_fn = model.DefaultEmbeddingFunction()
-
-    result = []
-
-    for page in document:
-        word_count = len(page.page_content.split())
-        # print(f'Word count: {word_count}')
-        if word_count <= _global.MIN_WORDS_PER_PAGE:
-            continue
-
-
-        chunked_page = text_splitter.split_text(page.page_content)
-
-        for i, chunk in enumerate(chunked_page):
-            inner_result_dict = {}
-            inner_result_dict['id'] = f"{page.metadata['source']}-{page.metadata['page']}-{i}"
-            inner_result_dict['vector'] = embedding_fn.encode_documents(chunk)
-            inner_result_dict['text'] = chunk
-            inner_result_dict['metadata'] = page.metadata
-            result.append(inner_result_dict)
-
-    return result
-
-
-
-async def consume_pdf_chunks(data_dict: list[list,list,list]):
-    add_to_collection(data_dict)
+async def consume_pdf_chunks(data_list: list[list,list,list]):
+    add_to_collection(data_list)
 
     return f"Data Added."
 
@@ -160,7 +174,7 @@ async def get_chunks_and_consume(filepath: str):
     chunked_documents = produce_pdf_chunks(filepath)
     print('chunked documents made')
 
-    tasks = [consume_pdf_chunks(chunk) for chunk in chunked_documents]
+    tasks = [consume_pdf_chunks(chunk_data) for chunk_data in chunked_documents]
     results = await asyncio.gather(*tasks)
     return results
 

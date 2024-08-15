@@ -7,8 +7,8 @@ networks:
 services:
   chromadb:
     image: chromadb/chroma:latest
-    volumes:
-      - ./databases/chromadb:/chroma/chroma
+    # volumes:
+    #   - ./databases/chromadb:/chroma/chroma
     environment:
       - IS_PERSISTENT=TRUE
       - PERSIST_DIRECTORY=/chroma/chroma # this is the default path, change it as needed
@@ -38,7 +38,7 @@ services:
     ports:
       - "5001:5001"
     volumes:
-      - ./databases/pdf_data:/pdf_data
+      # - ./databases/pdf_data:/pdf_data
       - ./backend/models:/root/.cache/chroma/onnx_models/
     depends_on:
       - chromadb

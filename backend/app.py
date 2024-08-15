@@ -28,25 +28,11 @@ from utils.multiprocessing_funcs import (
     consume_pdf_chunks,
     get_chunks_and_consume
 )
-from utils.collection_funcs import check_collection
+from utils.collection_funcs import get_collection
 
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
 
-# chroma_client = chromadb.HttpClient(
-#     host="chromadb",
-#     port=8000
-# )
-
-# device = 'cpu'
-# # embedding_function = SentenceTransformerEmbeddings(model_name=_global.embedding_model_name)
-# sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name=_global.embedding_model_name, device=device)
-# collection = chroma_client.get_or_create_collection(
-#     _global.doc_collection_name, 
-#     embedding_function=sentence_transformer_ef
-# )
-
-# Who is Nhimbaloth?
 
 @app.route('/')
 def index():
@@ -61,7 +47,7 @@ def query():
     app.logger.info('Query endpoint called.')
     try:
         ## TODO!
-        collection = check_collection()
+        collection = get_collection()
         query_text = request.json['query']
         results = collection.query(
             query_texts=[query_text],
@@ -115,36 +101,10 @@ def add_files():
 
     print('Starting multiprocessing...')
 
-    test_collection = check_collection()
+    test_collection = get_collection()
 
     results = asyncio.run(get_chunks_and_consume(file_path))
     print('Execution Done.')
-
-    # mp_pool = mp.Pool(processes=4)
-
-    # pool_with_func = mp_pool.async_map(consume_pdf_chunks, chunked_documents)
-    # pool_with_func.start()
-    # pool_with_func.join()
-
-    # produce_and_consume_queue = mp.Queue()
-    # produce_chunks_process = mp.Process(target=produce_pdf_chunks_to_queue, args=(produce_and_consume_queue, file_path))
-    # consume_chunks_process = mp.Process(target=consume_chunks_to_chromadb, args=(produce_and_consume_queue, True))
-
-    # start_time = time.time()
-
-    # # Start processes
-    # produce_chunks_process.start()
-    # consume_chunks_process.start()
-
-    # # Wait for producer to finish producing
-    # produce_chunks_process.join()
-
-    # # Signal consumer to stop consuming by putting None into the queue. Need 2 None's to stop 2 consumers.    
-    # produce_and_consume_queue.put(None)
-
-    # # Wait for consumer to finish consuming
-    # consume_chunks_process.join()
-    # print(f"Elapsed seconds: {time.time()-start_time:.0f} Record count: {_global.collection.count()}")
 
     return jsonify({'message': 'File uploaded successfully', 'file_path': file_path}), 200
 
